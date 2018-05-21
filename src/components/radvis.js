@@ -195,6 +195,12 @@ export default {
       this.colorDimension = this.selectDimension;
       this.updateNodes();
     },
+    setSelectDimension(dimensionName) {
+      console.log('select ', dimensionName);
+      if (_.isNil(dimensionName)) return;
+      this.selectDimension = this.getDimensionByName(dimensionName);
+      this.setColorDimensionCurrentDimension();
+    },
     makeNodeData() {
       const json = this.raw;
       if (_.isEmpty(this.colorDimension)) this.colorDimension = this.dimensions[0];

@@ -119,13 +119,12 @@
         .flex-group
           input(type='number', v-model="makeClusterCount")
           .command(v-on:click="doClusterDimension") Dimension Clustering
-        .category Dimension Clusters
         template(v-for="(cluster, i) in clusters")
           .flex-group.debug
-          <!--.flex-name Dimension Cluster [{{i}}]-->
-          .flex-group
+          .dimension-cluster-name Dimension Cluster [{{i}}]
+          .dimension-name-group
             template(v-for="dimension in cluster.dimensions")
-              .flex-text {{dimension}}
+              .dimension-name(v-on:click="setSelectDimension(dimension)") {{dimension}}
     <!--.test(style="padding:12px; font-size:12px; color:#666; white-space:nowrap;") {{dimensions}}-->
 </template>
 
@@ -142,7 +141,7 @@ export default radvis;
 
 @import "../style/global"
 
-$border-color : #ccc
+$border-color: #ccc
 .vc-compact
   width: 210px !important
 
@@ -340,6 +339,29 @@ svg.distribution
       flex: 1
       border-left: solid 1px #fff
 
+.dimension-cluster-name
+  font-size: 12px
+  font-weight: 600
+
+.dimension-name-group
+  padding: 8px 0 8px
+  display: flex
+  align-items: center
+  justify-content: left
+  flex-direction: row
+  flex-wrap: wrap
+  flex-flow: row wrap
+  align-content: flex-end
+  .dimension-name
+    cursor: pointer
+    margin-right: 12px
+    font-size: 12px
+    line-height: 1.5
+    border-bottom: solid 2px #fff
+    transition: border .2s
+    &:hover
+      border-bottom: solid 2px $md-pink-600
+
 .flex-group
   font-size: 14px
   display: flex
@@ -360,6 +382,7 @@ svg.distribution
   .flex-text
     flex: 1
   .flex-dimension
+    flex: 1
   &.debug
     line-height: 1.25
     font-size: 12px
