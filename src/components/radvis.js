@@ -1,5 +1,4 @@
-/* eslint-disable no-param-reassign,no-unused-vars,object-shorthand */
-
+/* eslint-disable no-param-reassign,no-unused-vars,object-shorthand,arrow-body-style */
 
 import * as d3 from 'd3';
 import * as $ from 'jquery';
@@ -7,13 +6,11 @@ import uuid from 'uuid/v1';
 import csvjson from 'csvjson';
 import * as VueColor from 'vue-color';
 import _ from 'lodash';
-import Vue from 'vue';
 import pcorr from 'compute-pcorr';
-import workerFarm from 'worker-farm';
+// import workerFarm from 'worker-farm';
+import clusterMaker from 'clusters';
 
 require('d3-selection-multi');
-
-console.log(workerFarm, pcorr);
 
 const colorCorrelation = d3.scaleLinear().domain([-1, 0, 1])
   .range([d3.rgb('#E53935'), d3.rgb('#fff'), d3.rgb('#1E88E5')]);
@@ -59,8 +56,15 @@ export default {
   },
   data() {
     return {
+      fillRadvis: false,
+      clusters: [],
+      makeClusterCount: 2,
       isUseA: false,
       dimensionFontSize: 12,
+      positions: {
+        radvisCenterX: 590,
+        radvisCenterY: 540,
+      },
       color: {
         start: {
           hex: '#007AFF',
@@ -87,6 +91,9 @@ export default {
     };
   },
   computed: {
+    getRadvisCenterTransform() {
+      return `translate(${this.positions.radvisCenterX},${this.positions.radvisCenterY})`;
+    },
     isSelectedDimension() {
       return !_.isEmpty(this.selectDimension);
     },
@@ -114,8 +121,7 @@ export default {
     },
   },
   methods: {
-    getCorrelation(corr) {
-      console.log(corr);
+    getCorrelationColor(corr) {
       return colorCorrelation(corr);
     },
     changeDimensionUsage(dimension) {
@@ -134,8 +140,56 @@ export default {
     getDimensionTextVisible(angle) {
       return (angle < 0 || angle > 180) ? 0 : 1;
     },
+    onFillRadvis() {
+      this.updateNodes();
+    },
     lining(coord) {
       return lineFunc(coord);
+    },
+    doClusterDimension() {
+      const dimensions = _.filter(this.dimensions, (dimension) => dimension.usage);
+      const notUsageDimensions = _.filter(this.dimensions, (dimension) => !dimension.usage);
+      const kmeansCount = _.isNil(this.makeClusterCount) ? Math.floor(Math.sqrt(dimensions.length)) : this.makeClusterCount;
+      clusterMaker.k(kmeansCount);
+      clusterMaker.iterations(100);
+      const vals = _.map(dimensions, dimension => _.map(dimension.correlation, v => v));
+      const origins = _.map(dimensions, (dimension) => {
+        return {
+          name: dimension.name,
+          vals: _.map(dimension.correlation, v => v),
+        };
+      });
+      clusterMaker.data(vals);
+      this.clusters = _.map(clusterMaker.clusters(), (cluster) => {
+        const clusterDimensions = _.map(cluster.points, (point) => {
+          const found = _.find(origins, origin => _.isEqual(origin.vals, point));
+          return found.name;
+        });
+        return {
+          centroid: cluster.centroid,
+          dimensions: clusterDimensions,
+        };
+      });
+      const arrangedDimensions = [];
+      const diffClusterAngle = 180 / this.clusters.length;
+      const diffDimensions = 180 / this.dimensions.length;
+      let currentAngle = 0;
+      _.map(this.clusters, (cluster) => {
+        _.forEach(cluster.dimensions, (dimension) => {
+          currentAngle += diffDimensions * 0.5;
+          const foundDimension = _.find(dimensions, d => d.name === dimension);
+          arrangedDimensions.push(foundDimension);
+          const coord = getRadialCoord(currentAngle, radius);
+          foundDimension.x = coord.x;
+          foundDimension.y = coord.y;
+          foundDimension.angle = currentAngle;
+          currentAngle += diffDimensions * 0.5;
+        });
+        currentAngle += diffClusterAngle;
+      });
+      _.forEach(notUsageDimensions, dimension => arrangedDimensions.push(dimension));
+      this.updateNodes();
+      this.dimensions = arrangedDimensions;
     },
     setColorDimensionCurrentDimension() {
       this.colorDimension = this.selectDimension;
@@ -171,13 +225,14 @@ export default {
         };
       }).filter(node => !_.isNaN(node.cx) || !_.isNaN(node.cy)).value();
       if (_.isEmpty(nodes)) return [];
-      const maxDist = _.maxBy(nodes, node => node.dist).dist;
-      const mul = 250 / maxDist;
-      _.forEach(nodes, (node) => {
-        node.cx *= mul;
-        node.cy *= mul;
-      });
-
+      if (this.fillRadvis) {
+        const maxDist = _.maxBy(nodes, node => node.dist).dist;
+        const mul = 350 / maxDist;
+        _.forEach(nodes, (node) => {
+          node.cx *= mul;
+          node.cy *= mul;
+        });
+      }
       return nodes;
     },
     updateNodes() {
@@ -190,7 +245,7 @@ export default {
       return _.filter(this.dimensions, d => d.usage).length;
     },
     getDimensionByName(name) {
-      return _.find(this.dimensions, d => d.name === name)
+      return _.find(this.dimensions, d => d.name === name);
     },
     initDimensions() {
       const json = this.raw;
@@ -235,7 +290,6 @@ export default {
           correlation[target.name] = corr[0][1];
         });
         dimension.correlation = correlation;
-        console.log(correlation);
       });
       _.forEach(dimensions, (dimension, i) => {
         const angle = (i / dimensions.length) * 360;
@@ -244,7 +298,9 @@ export default {
         dimension.y = coord.y;
         dimension.angle = angle;
       });
+
       this.dimensions = dimensions;
+      this.makeClusterCount = Math.floor(Math.sqrt(dimensions.length));
       this.selectDimension = dimensions[0];
     },
     onSelectFileButton() {
@@ -264,11 +320,7 @@ export default {
       });
     },
     async render() {
-      const root = d3.select('svg');
       await wait(1000);
-      // root.selectAll('*').remove();
-      const gDimension = root.append('g').attr('transform', 'translate(400,400)');
-      const gNode = root.append('g').attr('transform', 'translate(400,400)');
       let draggingTarget = null;
       const that = this;
       const dimensions = d3.selectAll('g.dimension');

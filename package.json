@@ -14,12 +14,14 @@
     "publish": "env NODE_ENV=production && node build/publish.js"
   },
   "dependencies": {
+    "clusters": "0.0.4",
     "compression": "^1.7.2",
     "compute-pcorr": "^1.0.0",
     "cors": "^2.8.4",
     "csvjson": "^5.0.0",
     "d3": "^5.4.0",
     "d3-selection-multi": "^1.0.1",
+    "data-clustering": "^0.1.3",
     "jquery": "^3.3.1",
     "lodash": "^4.17.10",
     "lodash-math": "0.0.7",
