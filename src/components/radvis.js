@@ -15,6 +15,9 @@ require('d3-selection-multi');
 const colorCorrelation = d3.scaleLinear().domain([-1, 0, 1])
   .range([d3.rgb('#E53935'), d3.rgb('#fff'), d3.rgb('#1E88E5')]);
 
+const colorDimensionCluster = d3.scaleLinear().domain([0, 1])
+  .interpolate(d3.interpolateHcl)
+  .range([d3.rgb('#007AFF'), d3.rgb('#ffe011')]);
 
 function sigma(array) {
   const arr = _.map(array, i => i * 1);
@@ -121,6 +124,9 @@ export default {
     },
   },
   methods: {
+    colorDimensionCluster(index, length) {
+      return colorDimensionCluster(index / length);
+    },
     getCorrelationColor(corr) {
       return colorCorrelation(corr);
     },
@@ -147,8 +153,8 @@ export default {
       return lineFunc(coord);
     },
     doClusterDimension() {
-      const dimensions = _.filter(this.dimensions, (dimension) => dimension.usage);
-      const notUsageDimensions = _.filter(this.dimensions, (dimension) => !dimension.usage);
+      const dimensions = _.filter(this.dimensions, dimension => dimension.usage);
+      const notUsageDimensions = _.filter(this.dimensions, dimension => !dimension.usage);
       const kmeansCount = _.isNil(this.makeClusterCount) ? Math.floor(Math.sqrt(dimensions.length)) : this.makeClusterCount;
       clusterMaker.k(kmeansCount);
       clusterMaker.iterations(100);
