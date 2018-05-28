@@ -10,18 +10,8 @@ export default new Router({
   routes: [
     {
       path: '/',
-      name: 'HelloWorld',
-      component: HelloWorld,
-    },
-    {
-      path: '/radvis',
       name: 'Radvis',
       component: Radvis,
-    },
-    {
-      path: '/hello',
-      name: 'HelloWorld',
-      component: HelloWorld,
     },
   ],
 });
