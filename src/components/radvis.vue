@@ -4,20 +4,28 @@
     .graph-field
       .selection-dimension-group
         .command(v-on:click="onSelectFileButton") Generate RADVIS from csv file
-        .category Color
+        .category NODE SETTINGS
+        .flex-group
+          .flex-name.large Node Opacity
+          input(v-model="nodeOpacity", type="number", min="0",max="100",step="10")
+        .flex-group
+          .flex-name.large Node Radius
+          input(v-model="nodeRadius", type="number")
+        .category-end
+        .category DIMENSION SETTINGS
         .flex-group
           .flex-name.large Dimension FontSize
-          input(v-model="dimensionFontSize", type="number")
+          input(v-model="dimensionFontSize")
         .flex-group
           .flex-name High Color
           input(type="color", v-model="color.end.hex", v-on:change="updateNodes")
           <!--picker(v-model="color.end", v-on:input="updateNodes")-->
         .flex-group
           .flex-name Low Color
-          input(type="color", v-model="color.start.hex")
+          input(type="color", v-model="color.start.hex", v-on:change="updateNodes")
           <!--picker(v-model="color.start", v-on:input="updateNodes")-->
         .category-end
-        .category Selected Dimension
+        .category SELECTED DIMENSION
         .group-info(v-if="isSelectedDimension")
           .flex-group
             .flex-name NAME
@@ -34,7 +42,7 @@
           .flex-group
             .flex-name SIGMA
             .flex-text : {{selectDimension.sigma.toFixed(2)}}
-          .category.small Dimension Action
+          .category.small DIMENSION ACTION
           .command(v-on:click="setColorDimensionCurrentDimension") Set Color Dimension
           .command(v-if="selectDimension.usage",
           v-on:click="changeDimensionUsage(selectDimension)").
@@ -42,7 +50,7 @@
           .command(v-if="!selectDimension.usage",
           v-on:click="changeDimensionUsage(selectDimension)").
             Activate Dimension
-          .category.small Node Distribution
+          .category.small NODE DISTRIBUTION
           svg.distribution
         .category-end
         .category Logging Field
@@ -88,7 +96,7 @@
                 v-bind:fill="color.start.hex", stroke="none")
           g.gNodes(v-bind:transform="getRadvisCenterTransform")
             template(v-for="node in nodes")
-              circle.node(v-bind="node")
+              circle.node(v-bind="node", v-bind:r="nodeRadius", v-bind:opacity="nodeOpacity * 0.01")
         //.group-padding
           svg.parallel
             g.axis(transform='translate(10,0)')
@@ -109,23 +117,23 @@
         .category Dimension Correlation
         .correlation-field
           .first-group
-            .empty-group
             template(v-for="dimension in dimensions")
               .name-horizontal(v-if="dimension.usage")
                 .name {{dimension.name}}
+            .empty-group
           template(v-for="dimension in dimensions")
             .correlation-group(v-if="dimension.usage",v-bind:style="{ height : (264 / getActiveDimensionSize()) + 'px'}")
+              template(v-for="target in dimensions")
+                .correlation-block(v-if="getDimensionByName(target.name).usage")
+                  .circle(v-bind:style="{ background : getCorrelationColor(dimension.correlation[target.name]) }")
               .name-vertical
                 .name {{dimension.name}}
-              template(v-for="target in dimensions")
-                .correlation-block(v-if="getDimensionByName(target.name).usage",
-                v-bind:style="{ background : getCorrelationColor(dimension.correlation[target.name]) }")
           .correlation-group.cluster
-            .name-vertical
             template(v-for="(cluster, i) in clusters")
               template(v-for="(dimension, j) in cluster.dimensions")
                 .correlation-block.cluster(v-bind:style="{ background : colorDimensionCluster(i, clusters.length) }",
                 v-bind="{index:j}")
+            .name-vertical
         .category Dimension Clusters
         template(v-for="(cluster, i) in clusters")
           .flex-group.debug
@@ -151,7 +159,7 @@ export default radvis;
 
 @import "../style/global"
 
-$border-color: #ccc
+$border-color: #ddd
 .vc-compact
   width: 210px !important
 
@@ -249,7 +257,6 @@ text
 svg.distribution
   width: 100%
   height: 120px
-  border: solid 1px #eee
 
 .graph-field
   height: 1080px
@@ -281,10 +288,10 @@ svg.distribution
     height: 100%
 
 .category
-  font-size: 14px
+  font-size: 11px
   color: #777
   line-height: 20px
-  font-weight: 800
+  font-weight: 500
   padding: 8px 16px 6px 16px
   &.small
     color: #888
@@ -332,8 +339,10 @@ svg.distribution
       font-size: 10px
       align-items: center
       position: relative
-      padding-top: 20px
       .name
+        text-align: right
+        text-overflow: ellipsis
+        overflow: hidden
         width: 100% !important
         transform: rotate(90deg)
   .correlation-group
@@ -344,31 +353,36 @@ svg.distribution
       height: 12px
     .name-vertical
       font-size: 10px
-      border-right: solid 1px #f0f0f0
+      padding-left: 4px
       width: 60px
       overflow: hidden
       display: flex
       align-items: center
       .name
         width: 100%
-        text-align: right
         padding-right: 5px
     .correlation-block
       flex: 1
       border-left: solid 1px #fff
+      position: relative
       &.cluster
         height: 6px
         margin-top: 1px
         border-left: solid 1px rgba(255, 255, 255, 0.1)
         &[index='0']
           border-left: solid 1px #fff
+      .circle
+        position: absolute
+        width: calc(100% - 20%)
+        height: calc(100% - 20%)
+        margin: 10%
+        border-radius: 50%
 
 .flex-group-dimension
   display: flex
   padding: 0 16px
   .flex-cluster-color
     width: 4px
-    height: 24px
   .flex-dimension-list
     flex: 1
     display: flex
@@ -380,16 +394,15 @@ svg.distribution
     .flex-dimension
       width: auto
       padding: 4px 8px
-      border: solid 1px $border-color
+      border: solid 1px #e3e3e3
       font-size: 11px
       font-weight: 500
       cursor: pointer
       &:hover
         background: #f0f0f0
       &.selected
-        border: solid 1px #333
-        background: #666
-        color: #fff
+        background: $border-color
+        color: #333
 
 .flex-group
   font-size: 14px
@@ -399,7 +412,6 @@ svg.distribution
   margin: 6px 0
   .flex-name
     padding: 0 8px
-    border-left: solid 2px #42b983
     font-weight: 600
     width: 90px !important
     overflow: hidden

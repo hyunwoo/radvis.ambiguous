@@ -60,6 +60,8 @@ export default {
   data() {
     return {
       fillRadvis: false,
+      nodeRadius: 5,
+      nodeOpacity: 50,
       clusters: [],
       makeClusterCount: 2,
       isUseA: false,
@@ -231,9 +233,7 @@ export default {
           cy,
           dist,
           fill: color(each[this.colorDimension.text]),
-          opacity: 0.6,
           dataIndex: i,
-          r: 3,
         };
       }).filter(node => !_.isNaN(node.cx) || !_.isNaN(node.cy)).value();
       if (_.isEmpty(nodes)) return [];
@@ -291,6 +291,41 @@ export default {
           ret.getNormalizeValue = val => ret.getRatio2(val);
           ret.uid = uuid();
           ret.selected = false;
+          const distribution = [];
+          const count = _.chain(values).countBy(value => value).size().value();
+
+          if (count >= 10) {
+            // cut by 10
+            const diff = (ret.max - ret.min) / 10;
+            const halfDiff = diff / 2;
+            for (let idx = 0; idx <= 10; idx += 1) {
+              const key = (ret.min + (diff * idx) + (diff / 2)).toFixed(2);
+              distribution[idx] = {
+                key,
+                count: 0,
+              };
+            }
+            _.forEach(values, (v) => {
+              const calcIdx = Math.floor((v - ret.min) / diff);
+              distribution[calcIdx].count += 1;
+            });
+          } else {
+            const diff = (ret.max - ret.min) / count;
+            const halfDiff = diff / 2;
+            for (let idx = 0; idx <= count; idx += 1) {
+              const key = (ret.min + (diff * idx) + (diff / 2)).toFixed(2);
+              distribution[idx] = {
+                key,
+                count: 0,
+              };
+            }
+            _.forEach(values, (v) => {
+              const calcIdx = Math.floor((v - ret.min) / diff);
+              distribution[calcIdx].count += 1;
+            });
+            // cut by count
+          }
+          console.log('distribution', distribution);
         } else return null;
         return ret;
       }).filter(d => d !== null).value();
