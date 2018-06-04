@@ -19,6 +19,10 @@ const colorDimensionCluster = d3.scaleLinear().domain([0, 1])
   .interpolate(d3.interpolateHcl)
   .range([d3.rgb('#007AFF'), d3.rgb('#ffe011')]);
 
+const line = d3.line()
+  .x(d => d.x)
+  .y(d => d.y).curve(d3.curveCardinal);
+
 function sigma(array) {
   const arr = _.map(array, i => i * 1);
   const avg = _.sum(arr) / arr.length;
@@ -101,6 +105,11 @@ export default {
     },
     isSelectedDimension() {
       return !_.isEmpty(this.selectDimension);
+    },
+    getNodeDistributionGraph() {
+      if (_.isEmpty(this.selectDimension)) return 0;
+      this.renderNodeDistribution();
+      return this.selectDimension.distribution.length;
     },
     getLineData() {
       const json = this.raw;
@@ -204,10 +213,10 @@ export default {
       this.updateNodes();
     },
     setSelectDimension(dimensionName) {
-      console.log('select ', dimensionName);
       if (_.isNil(dimensionName)) return;
       this.selectDimension = this.getDimensionByName(dimensionName);
       this.setColorDimensionCurrentDimension();
+      this.renderNodeDistribution();
     },
     makeNodeData() {
       const json = this.raw;
@@ -219,7 +228,7 @@ export default {
       const usageDimensions = _.filter(dimensions, d => d.usage);
       const nodes = _.chain(json).map((each, i) => {
         const coord = _.map(usageDimensions, (dimension) => {
-          const ratio = dimension.getRatio(each[dimension.text]);
+          const ratio = dimension.getRatioByApplier(each[dimension.text]);
           return {
             x: dimension.x * ratio,
             y: dimension.y * ratio,
@@ -291,41 +300,50 @@ export default {
           ret.getNormalizeValue = val => ret.getRatio2(val);
           ret.uid = uuid();
           ret.selected = false;
-          const distribution = [];
-          const count = _.chain(values).countBy(value => value).size().value();
 
-          if (count >= 10) {
-            // cut by 10
-            const diff = (ret.max - ret.min) / 10;
-            const halfDiff = diff / 2;
-            for (let idx = 0; idx <= 10; idx += 1) {
-              const key = (ret.min + (diff * idx) + (diff / 2)).toFixed(2);
-              distribution[idx] = {
-                key,
-                count: 0,
-              };
-            }
-            _.forEach(values, (v) => {
-              const calcIdx = Math.floor((v - ret.min) / diff);
-              distribution[calcIdx].count += 1;
-            });
-          } else {
-            const diff = (ret.max - ret.min) / count;
-            const halfDiff = diff / 2;
-            for (let idx = 0; idx <= count; idx += 1) {
-              const key = (ret.min + (diff * idx) + (diff / 2)).toFixed(2);
-              distribution[idx] = {
-                key,
-                count: 0,
-              };
-            }
-            _.forEach(values, (v) => {
-              const calcIdx = Math.floor((v - ret.min) / diff);
-              distribution[calcIdx].count += 1;
-            });
-            // cut by count
+          const distribution = [];
+          const powerApplier = [];
+          let count = _.chain(values).countBy(value => value).size().value();
+
+          if (count >= 10) count = 10;
+          const diff = (ret.max - ret.min) / count;
+          const halfDiff = diff / 2;
+          for (let idx = 0; idx <= count; idx += 1) {
+            const key = (ret.min + (diff * idx) + halfDiff).toFixed(2);
+            distribution[idx] = {
+              key,
+              count: 0,
+            };
+            powerApplier[idx] = {
+              min: ret.min + (diff * idx),
+              max: ret.min + (diff * (idx + 1)),
+              mean: key * 1,
+              power: idx * (10 / count),
+              index: idx,
+            };
           }
-          console.log('distribution', distribution);
+          _.forEach(values, (v) => {
+            const calcIdx = Math.floor((v - ret.min) / diff);
+            distribution[calcIdx].count += 1;
+          });
+          ret.distribution = distribution;
+          ret.powerApplier = powerApplier;
+          ret.getRatioByApplier = (val) => {
+            const pa = _.find(powerApplier, p => val >= p.min && val <= p.max);
+            if (pa.index === 0 || pa.index === count) return pa.power * 0.1;
+            let std;
+            let dst;
+            const ratio = Math.abs((val - pa.mean) / diff);
+            if (val < pa.min) {
+              std = pa.power;
+              dst = powerApplier[pa.index - 1].power;
+            } else {
+              std = pa.power;
+              dst = powerApplier[pa.index + 1].power;
+            }
+            const calcedPower = (std * (1 - ratio)) + (dst * ratio);
+            return calcedPower * 0.1;
+          };
         } else return null;
         return ret;
       }).filter(d => d !== null).value();
@@ -345,7 +363,6 @@ export default {
         dimension.y = coord.y;
         dimension.angle = angle;
       });
-
       this.dimensions = dimensions;
       this.makeClusterCount = Math.floor(Math.sqrt(dimensions.length));
       this.selectDimension = dimensions[0];
@@ -391,6 +408,132 @@ export default {
           that.updateNodes();
         });
       dimensions.call(drag);
+    },
+    renderNodeDistribution() {
+      const that = this;
+      const root = d3.select('svg.distribution');
+      root.selectAll('*').remove();
+      const distribution = this.selectDimension.distribution;
+      const powerApplier = this.selectDimension.powerApplier;
+      const distributionCount = this.selectDimension.distribution.length;
+      // const maxCount = this.nodes.length;
+      const maxCount = _.maxBy(distribution, d => d.count).count;
+      const ratio = 150 / maxCount;
+      const barWidth = 300 / distributionCount;
+      const color = d3.scaleLinear().domain([0, distributionCount])
+        .interpolate(d3.interpolateHcl)
+        .range([d3.rgb(this.color.start.hex), d3.rgb(this.color.end.hex)]);
+
+      _.forEach(distribution, (d, i) => {
+        root.append('rect').attrs({
+          class: 'distribution',
+          x: 20 + (i * barWidth),
+          y: 180,
+          width: barWidth - 1,
+          height: 0,
+          fill: color(i),
+        }).transition((d.count / maxCount) * 2000).delay(i * 50)
+          .attrs({
+            y: 180 - (d.count * ratio),
+            height: d.count * ratio,
+          });
+        root.append('text').attrs({
+          class: 'central',
+          x: 20 + (i * barWidth) + (barWidth / 2),
+          y: 170,
+          'font-size': '11px',
+          'font-weight': 600,
+          fill: color(i),
+          opacity: 0,
+        }).text(d.count).transition((d.count / maxCount) * 1000)
+          .delay(i * 50)
+          .attrs({
+            y: 170 - (d.count * ratio),
+            opacity: 1,
+          });
+
+        root.append('text').attrs({
+          class: 'central dimensionKey',
+          x: 20 + (i * barWidth) + (barWidth / 2),
+          y: 190,
+          'font-size': '11px',
+          'font-weight': 600,
+          fill: '#555',
+          opacity: 0,
+        }).text(d.key < 10 ? (d.key * 1).toFixed(1) : Math.floor(d.key))
+          .transition((d.count / maxCount) * 1000)
+          .delay(i * 50)
+          .attrs({
+            opacity: 1,
+          });
+      });
+
+      const defaultPathPoints = _.map(powerApplier, (p, i) => {
+        return {
+          x: (i * barWidth) + 20 + (barWidth * 0.5),
+          y: 180 - (i * 10),
+          power: p.power,
+        };
+      });
+      const pathPoints = _.map(powerApplier, (p, i) => {
+        return {
+          x: (i * barWidth) + 20 + (barWidth * 0.5),
+          y: 180 - (p.power * 10),
+          power: p.power,
+        };
+      });
+
+
+      const gApplier = root.append('g');
+
+      function createPowerApplierPath() {
+        gApplier.selectAll('*').remove();
+        gApplier.append('path').attrs({
+          class: 'power-applier',
+          d: line(pathPoints),
+        });
+        _.forEach(pathPoints, (p) => {
+          gApplier.append('text').attrs({
+            class: 'central power-applier-text',
+            x: p.x,
+            y: p.y - 12,
+          }).text((p.power * 1).toFixed(2));
+        });
+      }
+
+
+      createPowerApplierPath();
+
+      let draggingTarget = null;
+      const drag = d3.drag()
+        .on('start', function () {
+          draggingTarget = d3.select(this);
+        }).on('drag', () => {
+          let y = d3.event.y;
+          if (y < 30) y = 30;
+          if (y > 180) y = 180;
+          draggingTarget.attr('cy', y);
+        }).on('end', () => {
+          let y = d3.event.y;
+          if (y < 30) y = 30;
+          if (y > 180) y = 180;
+          draggingTarget.attr('cy', y);
+          const revertPower = -(y - 180) / 10;
+          powerApplier[draggingTarget.attr('idx') * 1].power = revertPower;
+          draggingTarget = null;
+          createPowerApplierPath();
+          this.updateNodes();
+        });
+
+      _.forEach(pathPoints, (p, i) => {
+        const controller = root.append('circle').attrs({
+          class: 'power-applier',
+          idx: i,
+          cx: p.x,
+          cy: p.y,
+        });
+        controller.call(drag);
+      });
     },
   },
 };

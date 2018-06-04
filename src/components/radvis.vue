@@ -50,7 +50,7 @@
           .command(v-if="!selectDimension.usage",
           v-on:click="changeDimensionUsage(selectDimension)").
             Activate Dimension
-          .category.small NODE DISTRIBUTION
+          .category.small NODE DISTRIBUTION [{{getNodeDistributionGraph}}]
           svg.distribution
         .category-end
         .category Logging Field
@@ -137,7 +137,6 @@
         .category Dimension Clusters
         template(v-for="(cluster, i) in clusters")
           .flex-group.debug
-          <!--.flex-name Dimension Cluster [{{i}}]-->
           .flex-group-dimension
             .flex-cluster-color(v-bind:style="{ background : colorDimensionCluster(i, clusters.length) }")
             .flex-dimension-list
@@ -208,6 +207,14 @@ input[type=number]
     width: 100px
     margin-right: 12px
 
+svg
+  text.central
+    text-anchor: middle
+    alignment-baseline: middle
+  text.power-applier-text
+    font-size : 12px
+    font-weight: 600
+
 g.dimension
   cursor: pointer
   circle
@@ -256,7 +263,26 @@ text
 
 svg.distribution
   width: 100%
-  height: 120px
+  height: 220px
+
+text.dimensionKey
+  font-size: 9px
+
+path.power-applier
+  stroke: #000
+  stroke-width: 3px
+  fill: none,
+
+circle.power-applier
+  r: 3
+  stroke: #333
+  fill: rgba(255, 255, 255, 1)
+  stroke-width: 2px
+  cursor: pointer
+  transition: r .3s, fill .3s
+  &:hover
+    r: 5
+    fill: rgba(255, 255, 255, 1)
 
 .graph-field
   height: 1080px
