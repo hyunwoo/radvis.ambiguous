@@ -1,6 +1,8 @@
 <template lang="pug">
   .section
     input(type='file')#fileInput
+    .main-title Improved exploration with dimensional weight manipulation in RadViz
+    .support-text This system is optimized for the Chrome browser with 1920 x 1200 resolution.
     .graph-field
       .selection-dimension-group
         .command(v-on:click="onSelectFileButton") Generate RADVIS from csv file
@@ -157,7 +159,33 @@ export default radvis;
 
 
 @import "../style/global"
+.section
+  position: relative
 
+.main-title
+  width: 100%
+  height: 40px
+  text-align: center
+  position: absolute
+  font-size: 14px
+  line-height: 40px
+  pointer-events: none
+  color: #666
+  left: 0
+  top: 0
+
+.support-text
+  width: 100%
+  height: 40px
+  text-align: center
+  position: absolute
+  font-size: 14px
+  line-height: 40px
+  pointer-events: none
+  left: 0
+  bottom: 0
+  font-style: italic
+  color : #999
 $border-color: #ddd
 .vc-compact
   width: 210px !important
@@ -212,7 +240,7 @@ svg
     text-anchor: middle
     alignment-baseline: middle
   text.power-applier-text
-    font-size : 12px
+    font-size: 12px
     font-weight: 600
 
 g.dimension
