@@ -102,7 +102,7 @@ module.exports = {
     bundleAnalyzerReport: process.env.npm_config_report
   },
   publish :{
-    port : 3000,
+    port : 3002,
     cors : '*',
   }
 };
