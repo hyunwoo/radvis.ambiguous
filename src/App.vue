@@ -25,12 +25,12 @@ export default {
   color: #2c3e50
 
 html
-  background: #fff
+  background: #f0f0f0
   height: 100vh
 
 body
   margin: auto
-  background: #fff
+  background: #f0f0f0
   width: 1920px
   padding: 0
   height: 100vh
@@ -44,12 +44,14 @@ body
   width: 1896px
   height: 1080px
   $box-shadow-opacity: 0.45
-  -webkit-box-shadow: 0 0 8px 0 rgba(50, 50, 50, $box-shadow-opacity)
-  -moz-box-shadow: 0 0 8px 0 rgba(50, 50, 50, $box-shadow-opacity)
-  box-shadow: 0 0 8px 0 rgba(50, 50, 50, $box-shadow-opacity)
+  -webkit-box-shadow: 0 4px 8px 0 rgba(50, 50, 50, $box-shadow-opacity)
+  -moz-box-shadow: 0 4px 8px 0 rgba(50, 50, 50, $box-shadow-opacity)
+  box-shadow: 0 4px 8px 0 rgba(50, 50, 50, $box-shadow-opacity)
+
 .test
-  width : 1800px
+  width: 1800px
   overflow: hidden
+
 *
   box-sizing: border-box
 </style>
