@@ -73,11 +73,13 @@
           .flex-text : {{clusters.length}}
       .svg-group
         svg.radvis
+          g#filter
+            rect(x="0", y="0", width="1200px", height="1080px", fill="rgba(255,255,255,0)")
           g.gBackground(v-bind:transform="getRadvisCenterTransform")
             circle(cx="0", cy="0", r="400", fill="none", stroke="#333", stroke-dasharray="3,6")
           g.gDimensions(v-bind:transform="getRadvisCenterTransform")
             template(v-for="dimension in dimensions")
-              g.dimension(v-bind:transform="'translate(' + dimension.x + ','+ dimension.y +')'",
+              g.dimension.controll(v-bind:transform="'translate(' + dimension.x + ','+ dimension.y +')'",
               v-bind:uid="dimension.uid",
               v-bind:class="{selection : selectDimension === dimension, disable : !dimension.usage}")
                 g(v-bind:transform="getDimensionGroupAngle(dimension.angle)")
@@ -98,7 +100,10 @@
                 v-bind:fill="color.start.hex", stroke="none")
           g.gNodes(v-bind:transform="getRadvisCenterTransform")
             template(v-for="node in nodes")
-              circle.node(v-bind="node", v-bind:r="nodeRadius", v-bind:opacity="nodeOpacity * 0.01")
+              circle.node(v-bind:cx="node.cx",v-bind:cy="node.cy",v-bind:opacity="node.opacity",
+              v-bind:fill="node.fill", v-bind:r="nodeRadius")
+          g#filterDrawZone(v-bind:transform="getRadvisCenterTransform")
+            rect.filter(v-if='filter.usage', v-bind='getFilterRect')
         //.group-padding
           svg.parallel
             g.axis(transform='translate(10,0)')
@@ -116,8 +121,11 @@
         .flex-group
           input.cluster-number(type='number', v-model="makeClusterCount")
           .command(v-on:click="doClusterDimension") Dimension Clustering
-        .category Dimension Correlation
-        .correlation-field
+        .category.use-carret(v-on:click="convertUsageViewOption('useCorrelationMatrix')",
+        v-bind:class="{opened : viewOption.useCorrelationMatrix}")
+          .text Dimension Correlation
+          i.material-icons expand_more
+        .correlation-field(v-if="viewOption.useCorrelationMatrix")
           .first-group
             template(v-for="dimension in dimensions")
               .name-horizontal(v-if="dimension.usage")
@@ -136,15 +144,35 @@
                 .correlation-block.cluster(v-bind:style="{ background : colorDimensionCluster(i, clusters.length) }",
                 v-bind="{index:j}")
             .name-vertical
-        .category Dimension Clusters
-        template(v-for="(cluster, i) in clusters")
-          .flex-group.debug
-          .flex-group-dimension
-            .flex-cluster-color(v-bind:style="{ background : colorDimensionCluster(i, clusters.length) }")
-            .flex-dimension-list
-              template(v-for="dimension in cluster.dimensions")
-                .flex-dimension(v-bind:class="{selected : dimension === selectDimension.name}", v-on:click="setSelectDimension(dimension)") {{dimension}}
-    <!--.test(style="padding:12px; font-size:12px; color:#666; white-space:nowrap;") {{dimensions}}-->
+        .category.use-carret(v-on:click="convertUsageViewOption('useDimensionCluster')",
+        v-bind:class="{opened : viewOption.useDimensionCluster}")
+          .text Dimension Clusters
+          i.material-icons expand_more
+        .group-dimension-cluster(v-if="viewOption.useDimensionCluster")
+          template(v-for="(cluster, i) in clusters")
+            .flex-group.debug
+            .flex-group-dimension
+              .flex-cluster-color(v-bind:style="{ background : colorDimensionCluster(i, clusters.length) }")
+              .flex-dimension-list
+                template(v-for="dimension in cluster.dimensions")
+                  .flex-dimension(v-bind:class="{selected : dimension === selectDimension.name}", v-on:click="setSelectDimension(dimension)") {{dimension}}
+        .category Nodes Radar
+        svg.radarChart
+          g.gDimensions(transform="translate(170,170), scale(0.35)")
+            circle(r="400",cx="0",cy="0",fill="none",stroke="#666")
+            template(v-for="dimension in dimensions")
+              g.dimension(v-bind:transform="'translate(' + dimension.x + ','+ dimension.y +')'",
+              v-bind:uid="dimension.uid",
+              v-bind:class="{selection : selectDimension === dimension, disable : !dimension.usage}")
+                g(v-bind:transform="getDimensionGroupAngle(dimension.angle)")
+                  text.dimension(v-bind:transform="getDimensionTextTransform(dimension.angle)",
+                  alignment-baseline="middle", v-bind:font-size="dimensionFontSize * 1.6").
+                    {{dimension.text}}
+                circle.inner
+                circle.dimension-normal(v-bind:r="dimension.selected ? 12 : 8")
+          g.gNodes(transform="translate(173,173), scale(0.38)")
+            template(v-for="path in paths")
+              path(v-bind="path")
 </template>
 
 <script>
@@ -185,7 +213,7 @@ export default radvis;
   left: 0
   bottom: 0
   font-style: italic
-  color : #999
+  color: #999
 $border-color: #ddd
 .vc-compact
   width: 210px !important
@@ -204,6 +232,7 @@ $border-color: #ddd
   right: 2px !important
 
 circle.node
+  pointer-events: none
   transition: all 0.3s
 
 input[type='file']
@@ -214,6 +243,18 @@ input[type='file']
   &:first-child
     padding-bottom: 0
   background: #eee
+
+svg.radarChart
+  width: 340px
+  height: 340px
+  background: #fff
+  border: solid 1px #eee
+
+rect.filter
+  fill: none
+  stroke-dasharray: 2, 2
+  stroke: #555
+  stroke-width: 1px
 
 input[type=number]
   width: 50px
@@ -234,6 +275,9 @@ input[type=number]
     font-size: 14px
     width: 100px
     margin-right: 12px
+
+g#filterDrawZone
+  pointer-events: none
 
 svg
   text.central
@@ -336,10 +380,28 @@ circle.power-applier
       height: 250px
       width: 100%
   .side-view
+    overflow-y: scroll
+    overflow-x: hidden
     border-left: solid 1px $border-color
     padding: 8px
     width: 376px
     height: 100%
+
+.category.use-carret
+  cursor: pointer
+  display: flex
+  &:hover
+    color: #333
+  &.opened
+    i
+      opacity: 0
+  i
+    text-align: center
+    height: 20px
+    line-height: 20px
+    transition: opacity .3s
+    width: 40px
+    opacity: 1
 
 .category
   font-size: 11px

@@ -63,6 +63,10 @@ export default {
   },
   data() {
     return {
+      viewOption: {
+        useCorrelationMatrix: false,
+        useDimensionCluster: false,
+      },
       fillRadvis: false,
       nodeRadius: 5,
       nodeOpacity: 50,
@@ -92,14 +96,30 @@ export default {
         },
       ],
       nodes: [],
+      paths: [],
       rc: {
         x: 0,
       },
       x: 10,
       selectDimension: {},
+      filter: {
+        usage: false,
+        startX: 0,
+        startY: 0,
+        endX: 5,
+        endY: 5,
+      },
     };
   },
   computed: {
+    getFilterRect() {
+      return {
+        x: (this.filter.startX > this.filter.endX ? this.filter.endX : this.filter.startX) - this.positions.radvisCenterX,
+        y: (this.filter.startY > this.filter.endY ? this.filter.endY : this.filter.startY) - this.positions.radvisCenterY,
+        width: Math.abs(this.filter.startX - this.filter.endX),
+        height: Math.abs(this.filter.startY - this.filter.endY),
+      };
+    },
     getRadvisCenterTransform() {
       return `translate(${this.positions.radvisCenterX},${this.positions.radvisCenterY})`;
     },
@@ -135,6 +155,10 @@ export default {
     },
   },
   methods: {
+    convertUsageViewOption(viewOptionName) {
+      this.viewOption[viewOptionName] = !this.viewOption[viewOptionName];
+      console.log(this.viewOption[viewOptionName]);
+    },
     colorDimensionCluster(index, length) {
       return colorDimensionCluster(index / length);
     },
@@ -227,6 +251,7 @@ export default {
       const dimensions = this.dimensions;
       const usageDimensions = _.filter(dimensions, d => d.usage);
       const nodes = _.chain(json).map((each, i) => {
+        const totalWeight = usageDimensions.length;
         const coord = _.map(usageDimensions, (dimension) => {
           const ratio = dimension.getRatioByApplier(each[dimension.text]);
           return {
@@ -234,13 +259,15 @@ export default {
             y: dimension.y * ratio,
           };
         });
-        const cx = _.sumBy(coord, c => c.x) / usageDimensions.length;
-        const cy = _.sumBy(coord, c => c.y) / usageDimensions.length;
+        const cx = _.sumBy(coord, c => c.x) / totalWeight;
+        const cy = _.sumBy(coord, c => c.y) / totalWeight;
         const dist = Math.sqrt((cx * cx) + (cy * cy));
         return {
+          coord,
           cx,
           cy,
           dist,
+          opacity: this.nodeOpacity * 0.01,
           fill: color(each[this.colorDimension.text]),
           dataIndex: i,
         };
@@ -258,6 +285,7 @@ export default {
     },
     updateNodes() {
       this.nodes = this.makeNodeData();
+      this.makeSelectNodeView();
     },
     getDimensionData(uid) {
       return _.find(this.dimensions, d => d.uid === uid);
@@ -382,12 +410,79 @@ export default {
         });
         reader.readAsText(file);
       });
+      this.releaseSelectNodeView();
+    },
+
+    makeSelectNodeView() {
+      const rect = {
+        x: (this.filter.startX > this.filter.endX ? this.filter.endX : this.filter.startX) - this.positions.radvisCenterX,
+        y: (this.filter.startY > this.filter.endY ? this.filter.endY : this.filter.startY) - this.positions.radvisCenterY,
+        width: Math.abs(this.filter.startX - this.filter.endX),
+        height: Math.abs(this.filter.startY - this.filter.endY),
+      };
+      if (rect.width < 1 && rect.height < 1) {
+        this.releaseSelectNodeView();
+        return;
+      }
+      _.forEach(this.nodes, (node) => {
+        node.opacity = this.nodeOpacity * 0.001;
+      });
+      const selectedNodes = _.filter(this.nodes, (node) => {
+        return (node.cx > rect.x) && (node.cx < (rect.x + rect.width))
+          && (node.cy > rect.y) && (node.cy < (rect.y + rect.height));
+      });
+      const lineFunction = d3.line()
+        .x(d => d.x).y(d => d.y).curve(d3.curveBasisClosed);
+      this.paths = _.map(selectedNodes, (node) => {
+        node.opacity = this.nodeOpacity * 0.01;
+        node.coord = _.sortBy(node.coord, c => ((Math.atan2(c.y, c.x) * 180) / Math.PI) + 180);
+        const c = d3.color(node.fill);
+        return {
+          d: lineFunction(node.coord),
+          fill: `rgba(${c.r},${c.g},${c.b},0.05)`,
+          stroke: node.fill,
+        };
+      });
+
+      console.log(this.paths);
+    },
+    releaseSelectNodeView() {
+      console.log('release selected node');
+      _.forEach(this.nodes, (node) => {
+        node.opacity = this.nodeOpacity * 0.01;
+      });
+      this.paths = [];
     },
     async render() {
       await wait(1000);
       let draggingTarget = null;
       const that = this;
-      const dimensions = d3.selectAll('g.dimension');
+      const rootFilter = d3.selectAll('g#filter');
+      console.log('rendered');
+
+      let startX;
+      let startY;
+      const dragFilter = d3.drag()
+        .on('start', () => {
+          startX = d3.event.x;
+          startY = d3.event.y;
+          this.filter.usage = true;
+          this.filter.startX = d3.event.x;
+          this.filter.startY = d3.event.y;
+          this.filter.endX = d3.event.x;
+          this.filter.endY = d3.event.y;
+        }).on('drag', () => {
+          this.filter.endX = d3.event.x;
+          this.filter.endY = d3.event.y;
+        }).on('end', () => {
+          this.filter.usage = false;
+          this.filter.endX = d3.event.x;
+          this.filter.endY = d3.event.y;
+          this.makeSelectNodeView();
+        });
+      rootFilter.call(dragFilter);
+
+      const dimensions = d3.selectAll('g.dimension.controll');
       const drag = d3.drag()
         .on('start', function () {
           draggingTarget = that.getDimensionData(d3.select(this).attr('uid'));
