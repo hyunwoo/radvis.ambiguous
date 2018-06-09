@@ -50,6 +50,8 @@ function wait(ms) {
 }
 
 const lineFunc = d3.line().x(d => d.x).y(d => d.y);
+const lineFunction = d3.line()
+  .x(d => d.x).y(d => d.y).curve(d3.curveBasisClosed);
 const width = 1080;
 const height = 1080;
 const radius = 400;
@@ -95,6 +97,15 @@ export default {
           y: 15,
         },
       ],
+      tableOption: {
+        pagination: {
+          enabled: true,
+          perPage: 5,
+          perPageDropdown: [5],
+          dropdownAllowAll: false,
+        },
+      },
+      selectedNodes: [],
       nodes: [],
       paths: [],
       rc: {
@@ -109,6 +120,42 @@ export default {
         endX: 5,
         endY: 5,
       },
+      columns: [
+        {
+          label: 'Name',
+          field: 'name',
+          filterOptions: {
+            enabled: true,
+          },
+        },
+        {
+          label: 'Age',
+          field: 'age',
+          type: 'number',
+        },
+        {
+          label: 'Created On',
+          field: 'createdAt',
+          type: 'date',
+          dateInputFormat: 'YYYY-MM-DD',
+          dateOutputFormat: 'MMM Do YY',
+        },
+        {
+          label: 'Percent',
+          field: 'score',
+          type: 'percentage',
+        },
+      ],
+      rows: [
+        { name: 'John', age: 20, createdAt: '201-10-31:9: 35 am', score: 0.03343 },
+        { name: 'Jane', age: 24, createdAt: '2011-10-31', score: 0.03343 },
+        { name: 'Susan', age: 16, createdAt: '2011-10-30', score: 0.03343 },
+        { name: 'Chris', age: 55, createdAt: '2011-10-11', score: 0.03343 },
+        { name: 'Dan', age: 40, createdAt: '2011-10-21', score: 0.03343 },
+        { name: 'John', age: 20, createdAt: '2011-10-31', score: 0.03343 },
+        { name: 'Jane', age: 24, createdAt: '20111031' },
+        { name: 'Susan', age: 16, createdAt: '2013-10-31', score: 0.03343 },
+      ],
     };
   },
   computed: {
@@ -153,11 +200,13 @@ export default {
       }).value();
       return rets;
     },
+    getSelectedData() {
+      return _.map(this.selectedNodes, node => this.raw[node.index]);
+    },
   },
   methods: {
     convertUsageViewOption(viewOptionName) {
       this.viewOption[viewOptionName] = !this.viewOption[viewOptionName];
-      console.log(this.viewOption[viewOptionName]);
     },
     colorDimensionCluster(index, length) {
       return colorDimensionCluster(index / length);
@@ -242,7 +291,8 @@ export default {
       this.setColorDimensionCurrentDimension();
       this.renderNodeDistribution();
     },
-    makeNodeData() {
+    makeNodeData(clear) {
+      if (_.isNil(clear)) clear = false;
       const json = this.raw;
       if (_.isEmpty(this.colorDimension)) this.colorDimension = this.dimensions[0];
       const color = d3.scaleLinear().domain([this.colorDimension.min, this.colorDimension.max])
@@ -259,14 +309,26 @@ export default {
             y: dimension.y * ratio,
           };
         });
+        const defaultCoord = _.map(usageDimensions, (dimension) => {
+          const ratio = dimension.getRatio(each[dimension.text]);
+          return {
+            x: dimension.x * (ratio * 0.9),
+            y: dimension.y * (ratio * 0.9),
+          };
+        });
         const cx = _.sumBy(coord, c => c.x) / totalWeight;
         const cy = _.sumBy(coord, c => c.y) / totalWeight;
         const dist = Math.sqrt((cx * cx) + (cy * cy));
+        let selected;
+        if (clear) selected = true;
+        else selected = _.isNil(this.nodes[i]) ? false : this.nodes[i].selected;
         return {
-          coord,
+          index: i,
+          coord: defaultCoord,
           cx,
           cy,
           dist,
+          selected,
           opacity: this.nodeOpacity * 0.01,
           fill: color(each[this.colorDimension.text]),
           dataIndex: i,
@@ -283,9 +345,9 @@ export default {
       }
       return nodes;
     },
-    updateNodes() {
-      this.nodes = this.makeNodeData();
-      this.makeSelectNodeView();
+    updateNodes(clear) {
+      this.nodes = this.makeNodeData(clear);
+      this.updateSelectNodeView();
     },
     getDimensionData(uid) {
       return _.find(this.dimensions, d => d.uid === uid);
@@ -299,6 +361,7 @@ export default {
     initDimensions() {
       const json = this.raw;
       const keys = _.keys(json[0]);
+      this.columns = [];
       const dimensions = _.chain(keys).map((k, i) => {
         const ret = {
           type: Number,
@@ -309,6 +372,11 @@ export default {
             ret.type = String;
             ret.usage = false;
           }
+        });
+        this.columns.push({
+          label: k,
+          field: k,
+          type: ret.type === Number ? 'number' : 'string',
         });
 
         if (ret.type === Number) {
@@ -391,6 +459,7 @@ export default {
         dimension.y = coord.y;
         dimension.angle = angle;
       });
+
       this.dimensions = dimensions;
       this.makeClusterCount = Math.floor(Math.sqrt(dimensions.length));
       this.selectDimension = dimensions[0];
@@ -404,15 +473,31 @@ export default {
         reader.addEventListener('load', () => {
           const json = csvjson.toObject(reader.result);
           this.raw = json;
+          console.log(this.raw);
           this.initDimensions();
-          this.updateNodes();
+          this.updateNodes(true);
           this.render();
         });
         reader.readAsText(file);
       });
-      this.releaseSelectNodeView();
     },
-
+    updateSelectNodeView() {
+      _.forEach(this.nodes, (node) => {
+        node.opacity = this.nodeOpacity * 0.001;
+      });
+      const selectedNodes = _.filter(this.nodes, node => node.selected);
+      this.paths = _.map(selectedNodes, (node) => {
+        node.opacity = this.nodeOpacity * 0.01;
+        node.coord = _.sortBy(node.coord, c => ((Math.atan2(c.y, c.x) * 180) / Math.PI) + 180);
+        const c = d3.color(node.fill);
+        return {
+          d: lineFunction(node.coord),
+          fill: `rgba(${c.r},${c.g},${c.b},0.05)`,
+          stroke: node.fill,
+        };
+      });
+      this.selectedNodes = selectedNodes;
+    },
     makeSelectNodeView() {
       const rect = {
         x: (this.filter.startX > this.filter.endX ? this.filter.endX : this.filter.startX) - this.positions.radvisCenterX,
@@ -428,11 +513,11 @@ export default {
         node.opacity = this.nodeOpacity * 0.001;
       });
       const selectedNodes = _.filter(this.nodes, (node) => {
-        return (node.cx > rect.x) && (node.cx < (rect.x + rect.width))
+        const selected = (node.cx > rect.x) && (node.cx < (rect.x + rect.width))
           && (node.cy > rect.y) && (node.cy < (rect.y + rect.height));
+        node.selected = selected;
+        return selected;
       });
-      const lineFunction = d3.line()
-        .x(d => d.x).y(d => d.y).curve(d3.curveBasisClosed);
       this.paths = _.map(selectedNodes, (node) => {
         node.opacity = this.nodeOpacity * 0.01;
         node.coord = _.sortBy(node.coord, c => ((Math.atan2(c.y, c.x) * 180) / Math.PI) + 180);
@@ -443,15 +528,16 @@ export default {
           stroke: node.fill,
         };
       });
-
-      console.log(this.paths);
+      this.selectedNodes = selectedNodes;
     },
     releaseSelectNodeView() {
       console.log('release selected node');
       _.forEach(this.nodes, (node) => {
         node.opacity = this.nodeOpacity * 0.01;
+        node.selected = true;
       });
       this.paths = [];
+      this.updateNodes();
     },
     async render() {
       await wait(1000);

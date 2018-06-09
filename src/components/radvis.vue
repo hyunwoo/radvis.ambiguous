@@ -1,183 +1,197 @@
 <template lang="pug">
-  .section
-    input(type='file')#fileInput
-    .main-title Improved exploration with dimensional weight manipulation in RadViz
-    .support-text This system is optimized for the Chrome browser with 1920 x 1200 resolution.
-    .graph-field
-      .selection-dimension-group
-        .command(v-on:click="onSelectFileButton") Generate RADVIS from csv file
-        .category NODE SETTINGS
-        .flex-group
-          .flex-name.large Node Opacity
-          input(v-model="nodeOpacity", type="number", min="0",max="100",step="10")
-        .flex-group
-          .flex-name.large Node Radius
-          input(v-model="nodeRadius", type="number")
-        .category-end
-        .category DIMENSION SETTINGS
-        .flex-group
-          .flex-name.large Dimension FontSize
-          input(v-model="dimensionFontSize")
-        .flex-group
-          .flex-name High Color
-          input(type="color", v-model="color.end.hex", v-on:change="updateNodes")
-          <!--picker(v-model="color.end", v-on:input="updateNodes")-->
-        .flex-group
-          .flex-name Low Color
-          input(type="color", v-model="color.start.hex", v-on:change="updateNodes")
-          <!--picker(v-model="color.start", v-on:input="updateNodes")-->
-        .category-end
-        .category SELECTED DIMENSION
-        .group-info(v-if="isSelectedDimension")
+  .radvis-field
+    .section
+      input(type='file')#fileInput
+      .main-title Improved exploration with dimensional weight manipulation in RadViz
+      .support-text This system is optimized for the Chrome browser with 1920 x 1200 resolution.
+      .graph-field
+        .selection-dimension-group
+          .command(v-on:click="onSelectFileButton") Generate RADVIS from csv file
+          .category NODE SETTINGS
           .flex-group
-            .flex-name NAME
-            .flex-text : {{selectDimension.name}}
+            .flex-name.large Node Opacity
+            input(v-model="nodeOpacity", type="number", min="0",max="100",step="10")
           .flex-group
-            .flex-name ANGLE
-            .flex-text : {{selectDimension.angle.toFixed(1)}}'
+            .flex-name.large Node Radius
+            input(v-model="nodeRadius", type="number")
+          .category-end
+          .category DIMENSION SETTINGS
           .flex-group
-            .flex-name MIN
-            .flex-text : {{selectDimension.min.toFixed(2)}}
+            .flex-name.large Dimension FontSize
+            input(v-model="dimensionFontSize")
           .flex-group
-            .flex-name MAX
-            .flex-text : {{selectDimension.max.toFixed(2)}}
+            .flex-name High Color
+            input(type="color", v-model="color.end.hex", v-on:change="updateNodes")
+            <!--picker(v-model="color.end", v-on:input="updateNodes")-->
           .flex-group
-            .flex-name SIGMA
-            .flex-text : {{selectDimension.sigma.toFixed(2)}}
-          .category.small DIMENSION ACTION
-          .command(v-on:click="setColorDimensionCurrentDimension") Set Color Dimension
-          .command(v-if="selectDimension.usage",
-          v-on:click="changeDimensionUsage(selectDimension)").
-            Disable Dimension
-          .command(v-if="!selectDimension.usage",
-          v-on:click="changeDimensionUsage(selectDimension)").
-            Activate Dimension
-          .category.small NODE DISTRIBUTION [{{getNodeDistributionGraph}}]
-          svg.distribution
-        .category-end
-        .category Logging Field
-        .flex-group.debug
-          .flex-name isSelect Dimension
-          .flex-text : {{isSelectedDimension}}
-        .flex-group.debug
-          .flex-name Start Color
-          .flex-text : {{color.start.hex}}
-        .flex-group.debug
-          .flex-name End Color
-          .flex-text : {{color.end.hex}}
-        .flex-group.debug
-          .flex-name Color Std Dimension
-          .flex-text : {{colorDimension.text}}
-        .flex-group.debug
-          .flex-name Dimension Cluster Size
-          .flex-text : {{clusters.length}}
-      .svg-group
-        svg.radvis
-          g#filter
-            rect(x="0", y="0", width="1200px", height="1080px", fill="rgba(255,255,255,0)")
-          g.gBackground(v-bind:transform="getRadvisCenterTransform")
-            circle(cx="0", cy="0", r="400", fill="none", stroke="#333", stroke-dasharray="3,6")
-          g.gDimensions(v-bind:transform="getRadvisCenterTransform")
+            .flex-name Low Color
+            input(type="color", v-model="color.start.hex", v-on:change="updateNodes")
+            <!--picker(v-model="color.start", v-on:input="updateNodes")-->
+          .category-end
+          .category SELECTED DIMENSION
+          .group-info(v-if="isSelectedDimension")
+            .flex-group
+              .flex-name NAME
+              .flex-text : {{selectDimension.name}}
+            .flex-group
+              .flex-name ANGLE
+              .flex-text : {{selectDimension.angle.toFixed(1)}}'
+            .flex-group
+              .flex-name MIN
+              .flex-text : {{selectDimension.min.toFixed(2)}}
+            .flex-group
+              .flex-name MAX
+              .flex-text : {{selectDimension.max.toFixed(2)}}
+            .flex-group
+              .flex-name SIGMA
+              .flex-text : {{selectDimension.sigma.toFixed(2)}}
+            .category.small DIMENSION ACTION
+            .command(v-on:click="setColorDimensionCurrentDimension") Set Color Dimension
+            .command(v-if="selectDimension.usage",
+            v-on:click="changeDimensionUsage(selectDimension)").
+              Disable Dimension
+            .command(v-if="!selectDimension.usage",
+            v-on:click="changeDimensionUsage(selectDimension)").
+              Activate Dimension
+            .category.small NODE DISTRIBUTION [{{getNodeDistributionGraph}}]
+            svg.distribution
+          .category-end
+          .category Logging Field
+          .flex-group.debug
+            .flex-name isSelect Dimension
+            .flex-text : {{isSelectedDimension}}
+          .flex-group.debug
+            .flex-name Start Color
+            .flex-text : {{color.start.hex}}
+          .flex-group.debug
+            .flex-name End Color
+            .flex-text : {{color.end.hex}}
+          .flex-group.debug
+            .flex-name Color Std Dimension
+            .flex-text : {{colorDimension.text}}
+          .flex-group.debug
+            .flex-name Dimension Cluster Size
+            .flex-text : {{clusters.length}}
+        .svg-group
+          svg.radvis
+            g#filter
+              rect(x="0", y="0", width="1200px", height="1080px", fill="rgba(255,255,255,0)")
+            g.gBackground(v-bind:transform="getRadvisCenterTransform")
+              circle(cx="0", cy="0", r="400", fill="none", stroke="#333", stroke-dasharray="3,6")
+            g.gDimensions(v-bind:transform="getRadvisCenterTransform")
+              template(v-for="dimension in dimensions")
+                g.dimension.controll(v-bind:transform="'translate(' + dimension.x + ','+ dimension.y +')'",
+                v-bind:uid="dimension.uid",
+                v-bind:class="{selection : selectDimension === dimension, disable : !dimension.usage}")
+                  g(v-bind:transform="getDimensionGroupAngle(dimension.angle)")
+                    text.dimension(v-bind:transform="getDimensionTextTransform(dimension.angle)",
+                    alignment-baseline="middle", v-bind:font-size="dimensionFontSize").
+                      {{dimension.text}}
+                    <!--circle.colorDimension(v-if="dimension === colorDimension",-->
+                    <!--v-bind:stroke="color.end.hex")-->
+                  circle.inner
+                  circle.dimension-normal(v-bind:r="dimension.selected ? 12 : 8")
+                  rect(v-if="dimension === colorDimension",
+                  width="8px", height="8px", x="35px", y="-35px",
+                  v-bind:transform="'rotate(' + (dimension.angle + 45 )+ ')'",
+                  v-bind:fill="color.end.hex", stroke="none")
+                  rect(v-if="dimension === colorDimension",
+                  width="8px", height="8px", x="25px", y="-45px",
+                  v-bind:transform="'rotate(' + (dimension.angle + 45 )+ ')'",
+                  v-bind:fill="color.start.hex", stroke="none")
+            g.gNodes(v-bind:transform="getRadvisCenterTransform")
+              template(v-for="node in nodes")
+                circle.node(v-bind:cx="node.cx",v-bind:cy="node.cy",v-bind:opacity="node.opacity",
+                v-bind:fill="node.fill", v-bind:r="nodeRadius")
+            g#filterDrawZone(v-bind:transform="getRadvisCenterTransform")
+              rect.filter(v-if='filter.usage', v-bind='getFilterRect')
+          //.group-padding
+            svg.parallel
+              g.axis(transform='translate(10,0)')
+                template(v-for="(dimension,i) in dimensions")
+                  line(v-bind:x1="1100 / (dimensions.length - 1) * i",
+                  v-bind:x2="1100 / (dimensions.length - 1) * i",
+                  v-bind:y1="0",
+                  v-bind:y2="300", stroke="#aaa", stroke-width="1px")
+              g.lines(transform='translate(10,0)')
+                template(v-for="line in getLineData")
+                  path(v-bind:d="lining(line.coord)", fill="none", stroke-width="2",
+                  v-bind:stroke="line.color", opacity="0.2")
+        .side-view
+          input(type='checkbox', v-model="fillRadvis" , v-on:change="onFillRadvis")
+          .flex-group
+            input.cluster-number(type='number', v-model="makeClusterCount")
+            .command(v-on:click="doClusterDimension") Dimension Clustering
+          .category.use-carret(v-on:click="convertUsageViewOption('useCorrelationMatrix')",
+          v-bind:class="{opened : viewOption.useCorrelationMatrix}")
+            .text Dimension Correlation
+            i.material-icons expand_more
+          .correlation-field(v-if="viewOption.useCorrelationMatrix")
+            .first-group
+              template(v-for="dimension in dimensions")
+                .name-horizontal(v-if="dimension.usage")
+                  .name {{dimension.name}}
+              .empty-group
             template(v-for="dimension in dimensions")
-              g.dimension.controll(v-bind:transform="'translate(' + dimension.x + ','+ dimension.y +')'",
-              v-bind:uid="dimension.uid",
-              v-bind:class="{selection : selectDimension === dimension, disable : !dimension.usage}")
-                g(v-bind:transform="getDimensionGroupAngle(dimension.angle)")
-                  text.dimension(v-bind:transform="getDimensionTextTransform(dimension.angle)",
-                  alignment-baseline="middle", v-bind:font-size="dimensionFontSize").
-                    {{dimension.text}}
-                  <!--circle.colorDimension(v-if="dimension === colorDimension",-->
-                  <!--v-bind:stroke="color.end.hex")-->
-                circle.inner
-                circle.dimension-normal(v-bind:r="dimension.selected ? 12 : 8")
-                rect(v-if="dimension === colorDimension",
-                width="8px", height="8px", x="35px", y="-35px",
-                v-bind:transform="'rotate(' + (dimension.angle + 45 )+ ')'",
-                v-bind:fill="color.end.hex", stroke="none")
-                rect(v-if="dimension === colorDimension",
-                width="8px", height="8px", x="25px", y="-45px",
-                v-bind:transform="'rotate(' + (dimension.angle + 45 )+ ')'",
-                v-bind:fill="color.start.hex", stroke="none")
-          g.gNodes(v-bind:transform="getRadvisCenterTransform")
-            template(v-for="node in nodes")
-              circle.node(v-bind:cx="node.cx",v-bind:cy="node.cy",v-bind:opacity="node.opacity",
-              v-bind:fill="node.fill", v-bind:r="nodeRadius")
-          g#filterDrawZone(v-bind:transform="getRadvisCenterTransform")
-            rect.filter(v-if='filter.usage', v-bind='getFilterRect')
-        //.group-padding
-          svg.parallel
-            g.axis(transform='translate(10,0)')
-              template(v-for="(dimension,i) in dimensions")
-                line(v-bind:x1="1100 / (dimensions.length - 1) * i",
-                v-bind:x2="1100 / (dimensions.length - 1) * i",
-                v-bind:y1="0",
-                v-bind:y2="300", stroke="#aaa", stroke-width="1px")
-            g.lines(transform='translate(10,0)')
-              template(v-for="line in getLineData")
-                path(v-bind:d="lining(line.coord)", fill="none", stroke-width="2",
-                v-bind:stroke="line.color", opacity="0.2")
-      .side-view
-        input(type='checkbox', v-model="fillRadvis" , v-on:change="onFillRadvis")
-        .flex-group
-          input.cluster-number(type='number', v-model="makeClusterCount")
-          .command(v-on:click="doClusterDimension") Dimension Clustering
-        .category.use-carret(v-on:click="convertUsageViewOption('useCorrelationMatrix')",
-        v-bind:class="{opened : viewOption.useCorrelationMatrix}")
-          .text Dimension Correlation
-          i.material-icons expand_more
-        .correlation-field(v-if="viewOption.useCorrelationMatrix")
-          .first-group
-            template(v-for="dimension in dimensions")
-              .name-horizontal(v-if="dimension.usage")
-                .name {{dimension.name}}
-            .empty-group
-          template(v-for="dimension in dimensions")
-            .correlation-group(v-if="dimension.usage",v-bind:style="{ height : (264 / getActiveDimensionSize()) + 'px'}")
-              template(v-for="target in dimensions")
-                .correlation-block(v-if="getDimensionByName(target.name).usage")
-                  .circle(v-bind:style="{ background : getCorrelationColor(dimension.correlation[target.name]) }")
+              .correlation-group(v-if="dimension.usage",v-bind:style="{ height : (264 / getActiveDimensionSize()) + 'px'}")
+                template(v-for="target in dimensions")
+                  .correlation-block(v-if="getDimensionByName(target.name).usage")
+                    .circle(v-bind:style="{ background : getCorrelationColor(dimension.correlation[target.name]) }")
+                .name-vertical
+                  .name {{dimension.name}}
+            .correlation-group.cluster
+              template(v-for="(cluster, i) in clusters")
+                template(v-for="(dimension, j) in cluster.dimensions")
+                  .correlation-block.cluster(v-bind:style="{ background : colorDimensionCluster(i, clusters.length) }",
+                  v-bind="{index:j}")
               .name-vertical
-                .name {{dimension.name}}
-          .correlation-group.cluster
+          .category.use-carret(v-on:click="convertUsageViewOption('useDimensionCluster')",
+          v-bind:class="{opened : viewOption.useDimensionCluster}")
+            .text Dimension Clusters
+            i.material-icons expand_more
+          .group-dimension-cluster(v-if="viewOption.useDimensionCluster")
             template(v-for="(cluster, i) in clusters")
-              template(v-for="(dimension, j) in cluster.dimensions")
-                .correlation-block.cluster(v-bind:style="{ background : colorDimensionCluster(i, clusters.length) }",
-                v-bind="{index:j}")
-            .name-vertical
-        .category.use-carret(v-on:click="convertUsageViewOption('useDimensionCluster')",
-        v-bind:class="{opened : viewOption.useDimensionCluster}")
-          .text Dimension Clusters
-          i.material-icons expand_more
-        .group-dimension-cluster(v-if="viewOption.useDimensionCluster")
-          template(v-for="(cluster, i) in clusters")
-            .flex-group.debug
-            .flex-group-dimension
-              .flex-cluster-color(v-bind:style="{ background : colorDimensionCluster(i, clusters.length) }")
-              .flex-dimension-list
-                template(v-for="dimension in cluster.dimensions")
-                  .flex-dimension(v-bind:class="{selected : dimension === selectDimension.name}", v-on:click="setSelectDimension(dimension)") {{dimension}}
-        .category Nodes Radar
-        svg.radarChart
-          g.gDimensions(transform="translate(170,170), scale(0.35)")
-            circle(r="400",cx="0",cy="0",fill="none",stroke="#666")
-            template(v-for="dimension in dimensions")
-              g.dimension(v-bind:transform="'translate(' + dimension.x + ','+ dimension.y +')'",
-              v-bind:uid="dimension.uid",
-              v-bind:class="{selection : selectDimension === dimension, disable : !dimension.usage}")
-                g(v-bind:transform="getDimensionGroupAngle(dimension.angle)")
-                  text.dimension(v-bind:transform="getDimensionTextTransform(dimension.angle)",
-                  alignment-baseline="middle", v-bind:font-size="dimensionFontSize * 1.6").
-                    {{dimension.text}}
-                circle.inner
-                circle.dimension-normal(v-bind:r="dimension.selected ? 12 : 8")
-          g.gNodes(transform="translate(173,173), scale(0.38)")
-            template(v-for="path in paths")
-              path(v-bind="path")
+              .flex-group.debug
+              .flex-group-dimension
+                .flex-cluster-color(v-bind:style="{ background : colorDimensionCluster(i, clusters.length) }")
+                .flex-dimension-list
+                  template(v-for="dimension in cluster.dimensions")
+                    .flex-dimension(v-bind:class="{selected : dimension === selectDimension.name}", v-on:click="setSelectDimension(dimension)") {{dimension}}
+          .category Nodes Radar
+          svg.radarChart
+            g.gNodes(transform="translate(173,173), scale(0.38)")
+              template(v-for="path in paths")
+                path(v-bind="path")
+            g.gDimensions(transform="translate(170,170), scale(0.35)")
+              circle(r="400",cx="0",cy="0",fill="none",stroke="#666")
+              template(v-for="dimension in dimensions")
+                line(x1='0',y1='0',v-bind:x2="dimension.x",
+                v-bind:y2="dimension.y",stroke="rgba(0,0,0,0.5)",
+                v-if="dimension.usage")
+                g.dimension(v-bind:transform="'translate(' + dimension.x + ','+ dimension.y +')'",
+                v-if="dimension.usage",
+                v-bind:uid="dimension.uid",
+                v-bind:class="{selection : selectDimension === dimension, disable : !dimension.usage}")
+                  g(v-bind:transform="getDimensionGroupAngle(dimension.angle)")
+                    line(x1='-15',y1='90',x2="15",v-bind:y2="90",stroke="rgba(0,0,0,0.3)" , stroke-width="3px")
+                    line(x1='-15',y1='180',x2="15",v-bind:y2="180",stroke="rgba(0,0,0,0.3)" , stroke-width="3px")
+                    line(x1='-15',y1='270',x2="15",v-bind:y2="270",stroke="rgba(0,0,0,0.3)" , stroke-width="3px")
+                    text.dimension(v-bind:transform="getDimensionTextTransform(dimension.angle)",
+                    alignment-baseline="middle", v-bind:font-size="dimensionFontSize * 1.6").
+                      {{dimension.text}}
+                  circle.inner
+                  circle.dimension-normal(v-bind:r="dimension.selected ? 12 : 8")
+    .selected-table-view
+      vue-good-table(:columns="columns", :rows="getSelectedData", :search-options="{ enabled: true, }",
+      :pagination-options="tableOption.pagination", styleClass="vgt-table striped bordered")
+
 </template>
 
 <script>
 
+
 import radvis from './radvis';
+
 
 export default radvis;
 
@@ -185,6 +199,16 @@ export default radvis;
 
 <style lang="sass">
 
+.vgt-responsive
+  height : 150px !important
+  overflow: hidden
+
+.vgt-table th, .vgt-table td
+  padding: 4px 8px !important
+  font-size: 12px !important
+
+.selected-table-view
+  width: 1896px
 
 @import "../style/global"
 .section
