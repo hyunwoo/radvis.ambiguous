@@ -31,14 +31,12 @@ export default {
 
 html
   background: #f0f0f0
-  height: 100vh
 
 body
   margin: auto
   background: #f0f0f0
   width: 1920px
-  padding: 0
-  height: 100vh
+  padding: 32px 0
   display: flex
   align-items: center
   justify-content: center
