@@ -420,7 +420,11 @@ export default {
           }
           _.forEach(values, (v) => {
             const calcIdx = Math.floor((v - ret.min) / diff);
-            distribution[calcIdx].count += 1;
+            try {
+              distribution[calcIdx].count += 1;
+            } catch (e) {
+              console.error('index count failed ', calcIdx);
+            }
           });
           ret.distribution = distribution;
           ret.powerApplier = powerApplier;
@@ -473,7 +477,6 @@ export default {
         reader.addEventListener('load', () => {
           const json = csvjson.toObject(reader.result);
           this.raw = json;
-          console.log(this.raw);
           this.initDimensions();
           this.updateNodes(true);
           this.render();
